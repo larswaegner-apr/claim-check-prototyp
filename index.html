@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim Check Prototyp</title>
+<!-- Prototype: start view = Figma 16145:30357 (signature, #signatur), linked price list = Figma 18985:5347 (#preisliste) with sticky back-button bar. ?sticky=0 disables sticking for comparison. -->
+<style>
+  @font-face { font-family: "Open Sans"; font-weight: 400; src: url("assets/fonts/open-sans-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "Open Sans"; font-weight: 500; src: url("assets/fonts/open-sans-latin-500-normal.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "Open Sans"; font-weight: 700; src: url("assets/fonts/open-sans-latin-700-normal.woff2") format("woff2"); font-display: swap; }
+  /* Public share build: licensed Filson Pro is intentionally NOT included. Headings use Open Sans 700 as a visible substitute. */
+  @font-face { font-family: "Filson Pro"; font-weight: 700; src: url("assets/fonts/open-sans-latin-700-normal.woff2") format("woff2"); font-display: swap; }
+
+  :root {
+    --primary-main: #268822;
+    --primary-dark: #1A5F17;
+    --primary-hover: rgba(38, 136, 34, 0.04);
+    --primary-focus: rgba(38, 136, 34, 0.12);
+    --text-primary: rgba(0, 0, 0, 0.87);
+    --divider: rgba(0, 0, 0, 0.12);
+    --outlined-border: rgba(0, 0, 0, 0.23);
+    --bg-default: #F3F5F8;
+    --bg-paper: #FFFFFF;
+    --brand-chrome: #333333;
+    --main-pad-top: 40px;
+    --main-gutter: 32px;
+    --action-bar-height: 91px;
+  }
+  @media (min-width: 1024px) { :root { --main-gutter: 188px; } }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-bottom: var(--action-bar-height); }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-default);
+    color: var(--text-primary);
+    font: 400 16px/1.5 "Open Sans", sans-serif;
+    letter-spacing: 0.15px;
+  }
+  h1, h2, p { margin: 0; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Shell */
+  .shell { flex: 1; display: grid; grid-template-columns: 1fr; }
+  @media (min-width: 1024px) { .shell { grid-template-columns: 340px minmax(0, 1fr); } }
+
+  /* Mobile header (below md 1024) */
+  .mobile-header {
+    display: flex; align-items: center; justify-content: space-between;
+    min-height: 72px; padding: 14px 16px; background: var(--brand-chrome);
+  }
+  .mobile-header img { display: block; height: 44px; width: auto; }
+  @media (min-width: 1024px) { .mobile-header { display: none; } }
+
+  /* Desktop sidebar */
+  .sidebar { display: none; }
+  @media (min-width: 1024px) {
+    .sidebar {
+      display: flex; flex-direction: column; gap: 32px;
+      background: var(--bg-paper); padding: 40px 0 48px;
+    }
+  }
+  .sidebar > * { padding-inline: 32px; }
+  .sidebar h2 {
+    font: 700 20px/1.6 "Filson Pro", sans-serif; letter-spacing: 0.15px; margin-bottom: 16px;
+  }
+  .benefits { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  .benefits li { display: flex; align-items: center; gap: 16px; font-size: 14px; line-height: 1.43; letter-spacing: 0.17px; }
+  .benefits img { width: 40px; height: 40px; flex: none; }
+  .media h2 { margin-bottom: 24px; }
+  .media ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; }
+  .media img, .media .rtl { display: block; opacity: 0.63; filter: grayscale(1); }
+  .media .rtl { display: flex; gap: 5.7px; }
+  .media .rtl img { opacity: 1; filter: none; }
+  .trustpilot { display: grid; gap: 8px; width: 176px; font-size: 12px; line-height: 14px; letter-spacing: 0; color: #000; }
+  .trustpilot .tp-logo { display: flex; align-items: flex-end; gap: 4px; font-weight: 600; font-size: 18px; line-height: 26px; }
+  .trustpilot .stars { display: flex; gap: 4px; }
+  .trustpilot .stars img { width: 32px; height: 32px; }
+  .static-note { font-size: 12px; color: rgba(0, 0, 0, 0.6); }
+
+  /* Main + content */
+  main {
+    min-width: 0;
+    display: flex; flex-direction: column;
+    padding: var(--main-pad-top) var(--main-gutter) 0;
+  }
+  .content { width: 100%; max-width: 892px; min-width: 0; display: flex; flex-direction: column; gap: 16px; padding-bottom: 8px; }
+  h1 { font: 700 24px/1.334 "Filson Pro", sans-serif; letter-spacing: 0; }
+  .content h2 { font: 700 20px/1.6 "Filson Pro", sans-serif; letter-spacing: 0.15px; }
+  h1:focus { outline: none; }
+
+  .table-wrap { overflow-x: auto; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--bg-paper); }
+  th, td { border: 1px solid var(--outlined-border); padding: 12px; text-align: left; vertical-align: top; font-weight: 400; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; hyphens: auto; }
+  thead th { background: var(--primary-focus); }
+  caption { caption-side: top; }
+
+  /* Sticky action bar: the subject of this prototype */
+  .action-bar {
+    position: sticky; bottom: 0; z-index: 1;
+    margin-inline: calc(-1 * var(--main-gutter));
+    padding: 24px var(--main-gutter);
+    background: var(--bg-default);
+    border-top: 1px solid transparent;
+    display: flex; justify-content: center;
+  }
+  .action-bar.is-stuck { border-top-color: var(--divider); }
+  .no-sticky .action-bar { position: static; }
+  /* Avoid a permanently covered viewport on very short/zoomed windows (SC 1.4.10, 2.4.11). */
+  @media (max-height: 480px) { .action-bar { position: static; } html { scroll-padding-bottom: 0; } }
+  .sentinel { height: 0; }
+
+  .btn-contained {
+    width: 100%; min-width: 124px; max-width: 456px; min-height: 42px;
+    padding: 8px 22px;
+    border: 0; border-radius: 4px;
+    background: var(--primary-main); color: #fff;
+    font: 500 15px/26px "Open Sans", sans-serif; letter-spacing: 0.46px;
+    cursor: pointer; box-shadow: none;
+  }
+  .btn-contained:hover { background: var(--primary-dark); }
+  .btn-contained:focus-visible, .btn-two-line:focus-visible { outline: 2px solid var(--primary-dark); outline-offset: 2px; }
+
+  /* Loading state, measured on the live Claim Check 2026-10-19: MUI CircularProgress 40px, thickness 3.6, primary, top-center of Main */
+  .spinner-wrap { display: flex; justify-content: center; padding-top: 46px; }
+  .spinner { display: inline-block; width: 40px; height: 40px; color: var(--primary-main); animation: spin 1.4s linear infinite; }
+  .spinner svg { display: block; }
+  .spinner circle { stroke: currentColor; stroke-dasharray: 80px, 200px; stroke-dashoffset: 0; animation: dash 1.4s ease-in-out infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes dash {
+    0% { stroke-dasharray: 1px, 200px; stroke-dashoffset: 0; }
+    50% { stroke-dasharray: 100px, 200px; stroke-dashoffset: -15px; }
+    100% { stroke-dasharray: 100px, 200px; stroke-dashoffset: -125px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .spinner, .spinner circle { animation: none; } }
+  [hidden] { display: none !important; }
+
+  /* Signature view */
+  .view { display: flex; flex-direction: column; }
+  .action-group { max-width: 892px; display: flex; justify-content: center; padding: 16px 0 24px; }
+  .flow-progress { width: 100%; max-width: 892px; display: flex; align-items: flex-end; gap: 8px; padding-bottom: 32px; }
+  .flow-progress .bar { flex: 1; min-width: 0; }
+  .flow-progress p { font-weight: 700; line-height: 1.75; color: var(--primary-dark); min-height: 32px; }
+  .flow-progress .track { height: 10px; background: var(--bg-paper); border-radius: 24px; overflow: hidden; }
+  .flow-progress .fill { height: 100%; width: 82.66%; background: var(--primary-main); border-radius: 48px; }
+  .flow-progress .plane { width: 24px; height: 24px; display: flex; align-items: flex-end; }
+  .flow-progress .plane img { width: 20px; height: 10px; }
+  .social-proof {
+    display: flex; align-items: center; padding: 6px 16px;
+    background: rgba(38, 136, 34, 0.08); border: 1px solid rgba(38, 136, 34, 0.3); border-radius: 16px;
+    color: var(--primary-dark);
+  }
+  .social-proof .avatar { flex: none; width: 40px; height: 40px; margin: 7px 12px 7px 0; border-radius: 50%; background: var(--primary-focus); display: grid; place-items: center; }
+  .social-proof .text { flex: 1; min-width: 0; padding-block: 8px; }
+  .social-proof .title { font-weight: 500; }
+  .social-proof .desc { font-size: 14px; line-height: 1.43; letter-spacing: 0.17px; }
+  .social-proof .desc b { letter-spacing: 0.1px; }
+  .subtitle1 { font-weight: 700; line-height: 1.75; color: var(--primary-dark); }
+  .btn-text-link {
+    align-self: flex-start; padding: 0 5px; border: 0; background: none; cursor: pointer;
+    font: 700 16px/1.75 "Open Sans", sans-serif; letter-spacing: 0.15px; color: var(--text-primary); text-decoration: underline;
+  }
+  .btn-text-link:focus-visible, .btn-small:focus-visible, .terms a:focus-visible { outline: 2px solid var(--primary-dark); outline-offset: 2px; }
+  .signature-card { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+  .signature-card h2 { padding-bottom: 8px; }
+  .signature-box {
+    height: 196px; padding: 8px 8px 0;
+    display: flex; flex-direction: column; justify-content: space-between;
+    background: var(--bg-paper); border: 1px solid rgba(0, 0, 0, 0.42); border-radius: 4px;
+  }
+  .signature-box p { text-align: center; font-size: 14px; line-height: 1.43; letter-spacing: 0.17px; }
+  .btn-small {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 8px;
+    border: 0; border-radius: 4px; background: none; cursor: pointer; color: var(--text-primary);
+    font: 500 14px/24px "Open Sans", sans-serif; letter-spacing: 0.4px;
+  }
+  .terms { text-align: center; font-size: 14px; line-height: 1.43; letter-spacing: 0.17px; color: rgba(0, 0, 0, 0.6); }
+  .terms a { color: var(--primary-dark); }
+  .btn-two-line {
+    width: 100%; min-width: 124px; max-width: 456px; padding: 4px 24px 8px;
+    border: 0; border-radius: 4px; cursor: pointer;
+    background: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.6);
+    font-family: "Open Sans", sans-serif; text-align: center;
+  }
+  .btn-two-line strong { display: block; font-size: 16px; line-height: 1.75; letter-spacing: 0.15px; }
+  .btn-two-line span { display: block; font-size: 14px; line-height: 1.43; letter-spacing: 0.17px; }
+
+  /* Page footer */
+  .page-footer {
+    background: var(--brand-chrome); color: #fff; text-align: center;
+    padding: 24px 32px; display: grid; gap: 8px;
+    font-size: 14px; line-height: 1.43; letter-spacing: 0.17px;
+  }
+  .page-footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0 16px; }
+  .page-footer a { color: #fff; text-decoration: none; display: inline-block; padding-block: 2px; }
+  .page-footer a:hover { text-decoration: underline; }
+  .page-footer a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header class="mobile-header">
+  <img src="assets/flightright-reference.png" alt="Flightright">
+  <img src="assets/trustpilot-reference.png" alt="Trustpilot – statische Designreferenz, keine aktuelle Bewertung">
+</header>
+
+<div class="shell">
+  <aside class="sidebar" aria-label="Über Flightright">
+    <div><img src="assets/flightright-logo.svg" width="255" height="48" alt="Flightright"></div>
+    <section>
+      <h2>Unsere Vorteile</h2>
+      <ul class="benefits">
+        <li><img src="assets/trophy.svg" alt="">Die Nr. 1 in Deutschland: Über 600 Millionen Euro an Entschädigungen durchgesetzt</li>
+        <li><img src="assets/piggy-bank.svg" alt="">Kein finanzielles Risiko: Unsere Provision wird nur bei Erfolg fällig</li>
+        <li><img src="assets/chat-dots.svg" alt="">Transparente Kommunikation: Wir halten Sie immer auf dem Laufenden</li>
+      </ul>
+    </section>
+    <section class="media">
+      <h2>Bekannt aus</h2>
+      <ul>
+        <li><img src="assets/die-zeit.svg" width="169" height="24" alt="Die Zeit"></li>
+        <li><span class="rtl" role="img" aria-label="RTL"><img src="assets/rtl-r.svg" width="57" height="32" alt=""><img src="assets/rtl-t.svg" width="57" height="32" alt=""><img src="assets/rtl-l.svg" width="57" height="32" alt=""></span></li>
+        <li><img src="assets/sueddeutsche.svg" width="209" height="24" alt="Süddeutsche Zeitung"></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Was unsere Kunden sagen</h2>
+      <div class="trustpilot">
+        <div class="tp-logo" aria-hidden="true"><img src="assets/trustpilot-star.svg" width="32" height="30" alt="">Trustpilot</div>
+        <div class="stars" aria-hidden="true">
+          <img src="assets/trustpilot-box.svg" alt=""><img src="assets/trustpilot-box.svg" alt=""><img src="assets/trustpilot-box.svg" alt=""><img src="assets/trustpilot-box.svg" alt=""><img src="assets/trustpilot-box.svg" alt="">
+        </div>
+        <p>TrustScore <b>4,9</b><br><b>24.664</b> Bewertungen</p>
+        <p class="static-note">Statische Designreferenz aus Figma, keine aktuelle Bewertung</p>
+      </div>
+    </section>
+  </aside>
+
+  <main>
+    <div class="spinner-wrap" id="loading" hidden>
+      <span class="spinner" role="progressbar" aria-label="Wird geladen"><svg viewBox="22 22 44 44" width="40" height="40" aria-hidden="true"><circle cx="44" cy="44" r="20.2" fill="none" stroke-width="3.6"></circle></svg></span>
+    </div>
+
+    <section class="view view-signatur" id="view-signatur" data-title="Unterschrift – Claim Check Prototyp" hidden>
+      <div class="flow-progress">
+        <div class="bar">
+          <p id="progress-label">Jetzt Entschädigung einfordern!</p>
+          <div class="track" role="progressbar" aria-labelledby="progress-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="83"><div class="fill"></div></div>
+        </div>
+        <span class="plane"><img src="assets/airplane.svg" alt=""></span>
+      </div>
+      <div class="content">
+        <h1 tabindex="-1">Prüfung erfolgreich!</h1>
+        <div class="social-proof">
+          <span class="avatar"><img src="assets/people-filled.svg" width="24" height="24" alt=""></span>
+          <div class="text">
+            <p class="title">Auch andere werden aktiv</p>
+            <p class="desc"><b>3 weitere Passagiere</b> Ihres Fluges haben ihre Entschädigung bereits mit uns durchgesetzt.</p>
+          </div>
+        </div>
+        <p class="subtitle1">Wir setzen Ihren Anspruch für Sie durch. Dafür benötigen wir nur noch Ihre Unterschrift.</p>
+        <button type="button" class="btn-text-link">Abtretungserklärung anzeigen</button>
+        <div class="signature-card">
+          <h2 id="sig-heading">Unterschrift</h2>
+          <div class="signature-box" role="group" aria-labelledby="sig-heading">
+            <p>Hier mit Finger oder Maus unterschreiben</p>
+            <button type="button" class="btn-small"><img src="assets/autorenew.svg" width="20" height="20" alt="">Wiederholen</button>
+          </div>
+        </div>
+        <p class="terms">Mit der Beauftragung erklären Sie sich mit unserer <a href="#preisliste" data-nav="preisliste">Preisliste</a> und unseren AGB einverstanden und nehmen die Datenschutzinfo, Widerrufsbestimmung sowie die Informationen zu alternativen Durchsetzungsmöglichkeiten zur Kenntnis.</p>
+      </div>
+      <div class="action-group">
+        <button type="button" class="btn-two-line"><strong>Jetzt beauftragen</strong><span>Kostenpflichtig nur bei Erfolg</span></button>
+      </div>
+    </section>
+
+    <section class="view view-preisliste" id="view-preisliste" data-title="Preisliste – Claim Check Prototyp" hidden>
+    <div class="content">
+      <h1 tabindex="-1">Preisliste</h1>
+
+      <h2>1. Kosten</h2>
+      <p>Wenn Flightright mit den Dienstleistungen zur Konfliktlösung erfolgreich ist und der Fluggast eine Entschädigung für seinen Flug erhält, steht Flightright eine Erfolgsprovision zu, die von der Entschädigung für den Flug abgezogen wird. Für alle Forderungen beträgt die Erfolgsprovision 28 % zuzüglich anzuwendender Mehrwertsteuer. Müssen wir unsere externen Anwälte beauftragen, berechnen wir einen Zuschlag von 14% zuzüglich anzuwendender Mehrwertsteuer.</p>
+      <p id="t1-desc">Beispiele anhand typischer Entschädigungen für Kunden in der Europäischen Union:</p>
+      <div class="table-wrap">
+        <table aria-describedby="t1-desc">
+          <thead><tr><th scope="col">Entschädigung</th><th scope="col">250 €</th><th scope="col">400 €</th><th scope="col">600 €</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Erfolgsprovision (inkl. 19 % MwSt.)</th><td>83,30 €</td><td>133,28 €</td><td>199,92 €</td></tr>
+            <tr><th scope="row">Ihre Kosten falls wir nicht erfolgreich sind</th><td>0 €</td><td>0 €</td><td>0 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p id="t2-desc">Beispiele anhand typischer Entschädigungen für Kunden in der Europäischen Union bei Beauftragung externer Anwälte, im Klageverfahren und bei notwendigen Gerichtsverhandlungen.</p>
+      <div class="table-wrap">
+        <table aria-describedby="t2-desc">
+          <thead><tr><th scope="col">Entschädigung</th><th scope="col">250 €</th><th scope="col">400 €</th><th scope="col">600 €</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Erfolgsprovision (inkl. 19 % MwSt.)</th><td>83,30 €</td><td>133,28 €</td><td>199,92 €</td></tr>
+            <tr><th scope="row">Zuschlag (inkl. 19 % MwSt.)</th><td>41,65 €</td><td>66,64 €</td><td>99,96 €</td></tr>
+            <tr><th scope="row">Gesamtpreis mit Zuschlag (inkl. 19 % MwSt.)</th><td>124,95 €</td><td>199,92 €</td><td>299,88 €</td></tr>
+            <tr><th scope="row">Ihre Kosten falls wir nicht erfolgreich sind</th><td>0 €</td><td>0 €</td><td>0 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Für Kunden außerhalb der Europäischen Union entfällt die Mehrwertsteuer.</p>
+
+      <h2>2. Banküberweisung</h2>
+      <p>Flightright bietet kostenlose Banküberweisungen auf SEPA Konten an. Alle Transaktionsgebühren/-kosten im Zusammenhang mit der Bank des Auftraggebers werden vollständig von Flightright übernommen. Für den Fall, dass Sie über kein SEPA Konto verfügen oder eine Auszahlung via PayPal wünschen, werden etwaig anfallende Gebühren für die Überweisung oder Auszahlung von Ihnen getragen.</p>
+      <p>Aktualisiert: 24. April 2024</p>
+      <p>Version: 2.0</p>
+    </div>
+
+    <div class="action-bar">
+      <button type="button" class="btn-contained" id="back">Zurück</button>
+    </div>
+    <div class="sentinel" aria-hidden="true"></div>
+    </section>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p>Copyright © Flightright GmbH. Alle Rechte vorbehalten</p>
+  <ul>
+    <li><a href="#">Anspruchsprüfung neu starten</a></li>
+    <li><a href="#">Datenschutz &amp; Cookies</a></li>
+    <li><a href="#">Barrierefreiheitserklärung</a></li>
+    <li><a href="#">AGB</a></li>
+    <li><a href="#">Impressum</a></li>
+  </ul>
+</footer>
+
+<script>
+  if (new URLSearchParams(location.search).get('sticky') === '0') document.documentElement.classList.add('no-sticky');
+  const bar = document.querySelector('.action-bar');
+  new IntersectionObserver(([e]) => bar.classList.toggle('is-stuck', !e.isIntersecting && getComputedStyle(bar).position === 'sticky'))
+    .observe(document.querySelector('.sentinel'));
+
+  // Hash routing with the live Claim Check's standard transition (measured 2026-10-19):
+  // old view stays ~100ms, then Main is replaced by a 40px CircularProgress for ~300ms, new view at ~400ms, scroll top.
+  // Deviation from live: focus moves to the new h1 (DESIGN.md view focus); live leaves focus on <body>.
+  const views = { signatur: document.getElementById('view-signatur'), preisliste: document.getElementById('view-preisliste') };
+  const loading = document.getElementById('loading');
+  const HOLD_MS = 100, SPINNER_MS = 300;
+  let current = null, pending = false, timers = [];
+  const viewFromHash = () => (location.hash === '#preisliste' ? 'preisliste' : 'signatur');
+
+  function render(name, moveFocus) {
+    Object.entries(views).forEach(([k, el]) => { el.hidden = k !== name; });
+    loading.hidden = true;
+    document.title = views[name].dataset.title;
+    current = name; pending = false;
+    window.scrollTo(0, 0);
+    if (moveFocus) views[name].querySelector('h1').focus();
+  }
+  function transition(name) {
+    timers.forEach(clearTimeout); pending = true;
+    timers = [
+      setTimeout(() => { Object.values(views).forEach(el => { el.hidden = true; }); loading.hidden = false; window.scrollTo(0, 0); }, HOLD_MS),
+      setTimeout(() => render(name, true), HOLD_MS + SPINNER_MS),
+    ];
+  }
+
+  document.querySelectorAll('[data-nav]').forEach(link => link.addEventListener('click', e => {
+    e.preventDefault();
+    if (pending || current === link.dataset.nav) return;
+    history.pushState({ fromApp: true }, '', '#' + link.dataset.nav);
+    transition(link.dataset.nav);
+  }));
+  document.getElementById('back').addEventListener('click', () => {
+    if (pending) return;
+    if (history.state && history.state.fromApp) { history.back(); return; }
+    history.replaceState(null, '', '#signatur');
+    transition('signatur');
+  });
+  window.addEventListener('popstate', () => { const n = viewFromHash(); if (n !== current || pending) transition(n); });
+  document.querySelectorAll('.page-footer a').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+
+  render(viewFromHash(), false);
+</script>
+</body>
+</html>
